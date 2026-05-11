@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>CreditIQ — Smart Loan Eligibility System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f6f1;color:#1a2e1e;min-height:100vh;display:flex;flex-direction:column}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;padding:0 28px;height:62px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 16px rgba(10,77,46,.25);position:sticky;top:0;z-index:100}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-ico{width:36px;height:36px;background:rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.brand h1{font-size:20px;font-weight:800}
+.brand sub{font-size:11px;opacity:.65;font-weight:400;margin-left:4px}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.hdr-btn{color:#fff;text-decoration:none;font-size:12px;padding:7px 14px;border-radius:20px;border:1px solid rgba(255,255,255,.25);cursor:pointer;background:none;transition:all .2s}
+.hdr-btn:hover{background:rgba(255,255,255,.12)}
+.hdr-user{background:rgba(201,168,76,.18);border-color:rgba(201,168,76,.4);color:#f5d97a}
+
+/* TABS */
+.tab-bar{background:#fff;border-bottom:1px solid #d4e6d9;display:flex;padding:0 28px;gap:4px;box-shadow:0 1px 6px rgba(10,77,46,.06)}
+.tab{padding:14px 20px;font-size:13px;font-weight:600;color:#6b9e77;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;display:flex;align-items:center;gap:7px}
+.tab:hover{color:#0a4d2e;background:#f7fbf8}
+.tab.active{color:#0a4d2e;border-bottom-color:#0a4d2e;background:#f0f9f3}
+
+/* CONTENT */
+.content{flex:1;padding:28px 32px;max-width:1400px;margin:0 auto;width:100%}
+.tab-panel{display:none;animation:fadeIn .35s ease}
+.tab-panel.active{display:block}
+
+/* CARDS */
+.card{background:#fff;border-radius:14px;box-shadow:0 2px 14px rgba(10,77,46,.07);padding:22px;border:1px solid #e0ede3}
+.card-title{font-size:15px;font-weight:700;color:#0a4d2e;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #e8f5eb;display:flex;align-items:center;gap:8px}
+
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:14px;padding:20px 16px;text-align:center;border:1px solid #e0ede3;box-shadow:0 2px 10px rgba(10,77,46,.06);transition:transform .2s}
+.stat-card:hover{transform:translateY(-3px)}
+.stat-icon{font-size:26px;margin-bottom:8px}
+.stat-val{font-size:28px;font-weight:800;color:#0a4d2e}
+.stat-lbl{font-size:12px;color:#6b9e77;margin-top:4px;font-weight:600}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+
+/* FORM */
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#4a8c5c;margin:16px 0 10px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:#e0ede3}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.field label{display:block;font-size:11px;font-weight:700;color:#4a8c5c;margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select{width:100%;padding:10px 13px;border:1.5px solid #d4e6d9;border-radius:9px;font-size:14px;color:#1a2e1e;background:#f9fbf9;transition:all .2s}
+.field input:focus,.field select:focus{outline:none;border-color:#0a4d2e;background:#fff;box-shadow:0 0 0 3px rgba(10,77,46,.08)}
+.predict-btn{width:100%;padding:14px;background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:12px;transition:all .2s}
+.predict-btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(10,77,46,.3)}
+.predict-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.loading-bar{display:none;text-align:center;padding:10px;color:#0a4d2e;font-size:13px;font-weight:600}
+
+/* RESULT */
+.result-banner{border-radius:12px;padding:20px 24px;display:none;align-items:center;gap:18px;font-size:15px;font-weight:600;margin-bottom:20px;animation:popIn .4s ease}
+.result-banner.approved{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #22c55e;color:#15803d}
+.result-banner.rejected{background:linear-gradient(135deg,#fff5f5,#fee2e2);border:2px solid #f05a5a;color:#b91c1c}
+.result-badge{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.approved .result-badge{background:#bbf7d0}
+.rejected .result-badge{background:#fecaca}
+.result-pct{margin-left:auto;font-size:34px;font-weight:900}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:#f0f9f3;color:#4a8c5c;font-weight:700;padding:10px 14px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.tbl td{padding:10px 14px;border-bottom:1px solid #eef6f0}
+.tbl tr:hover td{background:#f7fbf8}
+
+/* PILL */
+.pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.pill.approved{background:#dcfce7;color:#15803d}
+.pill.rejected{background:#fee2e2;color:#b91c1c}
+
+/* SEARCH */
+.search-bar{width:100%;padding:10px 14px;border:1.5px solid #d4e6d9;border-radius:9px;font-size:14px;margin-bottom:16px;background:#f9fbf9;transition:all .2s}
+.search-bar:focus{outline:none;border-color:#0a4d2e;box-shadow:0 0 0 3px rgba(10,77,46,.08)}
+
+/* TIPS */
+.tip-item{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;background:#f7fbf8;border-radius:9px;margin-bottom:8px}
+
+/* PROGRESS */
+.prog-step{display:flex;align-items:flex-start;gap:14px;margin-bottom:0;position:relative}
+.prog-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:800;flex-shrink:0}
+.prog-line{width:2px;height:36px;margin-left:11px}
+
+/* CHATBOT */
+.bot-msg{background:#f0f9f3;color:#1a2e1e;padding:10px 13px;border-radius:12px 12px 12px 4px;font-size:13px;max-width:85%;line-height:1.5;border:1px solid #d4e6d9}
+.user-msg{background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;padding:10px 13px;border-radius:12px 12px 4px 12px;font-size:13px;max-width:85%;align-self:flex-end;line-height:1.5}
+
+/* EMI */
+.emi-result{background:linear-gradient(135deg,#0a4d2e,#1a7a45);border-radius:14px;padding:24px;color:#fff;text-align:center;margin-bottom:20px}
+.emi-amount{font-size:44px;font-weight:900;color:#f5d97a}
+.emi-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.emi-item{background:rgba(255,255,255,.1);border-radius:10px;padding:12px;text-align:center}
+.emi-item .val{font-size:16px;font-weight:800;color:#f5d97a}
+.emi-item .lbl{font-size:11px;opacity:.75;margin-top:3px}
+.slider-group{margin-bottom:18px}
+.slider-group label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;color:#2d6a4f;margin-bottom:8px}
+.slider-group label span{color:#0a4d2e;font-size:15px;font-weight:800}
+input[type=range]{width:100%;accent-color:#0a4d2e;cursor:pointer}
+
+/* PROFILE */
+.avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#0a4d2e,#1a7a45);display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;font-weight:800;flex-shrink:0}
+
+/* AFFORDABILITY */
+.afford-bar{background:#fff;border:1.5px solid #d4e6d9;border-radius:12px;padding:14px 20px;margin-bottom:18px;display:none;align-items:center;gap:16px}
+
+.chart-wrap{position:relative;height:220px}
+.empty-state{text-align:center;color:#9ab89f;padding:36px;font-size:13px}
+.badge-admin{background:#c9a84c;color:#1a2e1e;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:800;margin-left:6px}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes popIn{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="brand">
+    <div class="brand-ico">&#129504;</div>
+    <h1>CreditIQ <sub>Smart Banking</sub></h1>
+  </div>
+  <div class="hdr-right">
+    {% if is_admin %}<a href="/admin" class="hdr-btn">&#9881; Admin</a>{% endif %}
+    <span class="hdr-btn hdr-user">&#128100; {{ username }}{% if is_admin %}<span class="badge-admin">ADMIN</span>{% endif %}</span>
+    <a href="/logout" class="hdr-btn">&#128682; Logout</a>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <div class="tab active" onclick="switchTab('overview',this)">&#127968; Overview</div>
+  <div class="tab" onclick="switchTab('predict',this)">&#9889; Predict</div>
+  <div class="tab" onclick="switchTab('history',this)">&#128203; History</div>
+  <div class="tab" onclick="switchTab('reports',this)">&#128200; Reports</div>
+  <div class="tab" onclick="switchTab('emi',this)">&#129518; EMI Calculator</div>
+  <div class="tab" onclick="switchTab('profile',this)">&#128100; Profile</div>
+</div>
+
+<div class="content">
+
+  <!-- OVERVIEW -->
+  <div class="tab-panel active" id="tab-overview">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">&#128203;</div><div class="stat-val" id="ov-total">0</div><div class="stat-lbl">Total Predictions</div></div>
+      <div class="stat-card"><div class="stat-icon">&#9989;</div><div class="stat-val" id="ov-approved" style="color:#15803d">0</div><div class="stat-lbl">Approved</div></div>
+      <div class="stat-card"><div class="stat-icon">&#10060;</div><div class="stat-val" id="ov-rejected" style="color:#b91c1c">0</div><div class="stat-lbl">Rejected</div></div>
+      <div class="stat-card"><div class="stat-icon">&#128200;</div><div class="stat-val" id="ov-rate">0%</div><div class="stat-lbl">Approval Rate</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">&#127358; Approval vs Rejection</div>
+        <div class="chart-wrap"><canvas id="ovDonutCanvas"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#128336; Recent Activity</div>
+        <div id="recentActivity"><div class="empty-state">No predictions yet.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREDICT -->
+  <div class="tab-panel" id="tab-predict">
+    <div id="affordBar" class="afford-bar">
+      <div style="font-size:13px;font-weight:700;color:#0a4d2e;white-space:nowrap">&#128184; Affordability</div>
+      <div style="flex:1;background:#e8f5eb;border-radius:20px;height:10px;overflow:hidden">
+        <div id="affordFill" style="height:100%;border-radius:20px;transition:width .5s;background:#16a34a;width:0%"></div>
+      </div>
+      <div id="affordText" style="font-size:13px;font-weight:700;white-space:nowrap"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:420px 1fr;gap:24px">
+      <div class="card">
+        <div class="card-title">&#128203; Loan Application</div>
+
+        <div class="section-label">Personal Details</div>
+        <div class="form-row">
+          <div class="field"><label>Full Name</label><input type="text" id="f_name" placeholder="Arjun Kumar"/></div>
+          <div class="field"><label>Age</label><input type="number" id="f_age" placeholder="18-70"/></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Gender</label><select id="f_gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+          <div class="field"><label>Married</label><select id="f_married"><option value="">Select</option><option>Yes</option><option>No</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Education</label><select id="f_edu"><option value="">Select</option><option>Graduate</option><option>Not Graduate</option></select></div>
+          <div class="field"><label>Employment</label><select id="f_emp"><option value="">Select</option><option>Salaried</option><option>Self Employed</option><option>Business</option><option>Unemployed</option></select></div>
+        </div>
+
+        <div class="section-label">Income & Loan</div>
+        <div class="form-row">
+          <div class="field"><label>Monthly Income (&#8377;)</label><input type="number" id="f_income" placeholder="50000" oninput="updateAffordability()"/></div>
+          <div class="field"><label>Co-Applicant (&#8377;)</label><input type="number" id="f_coincome" placeholder="0"/></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Experience (yrs)</label><input type="number" id="f_exp" placeholder="5"/></div>
+          <div class="field"><label>Loan Amount (&#8377;)</label><input type="number" id="f_lamt" placeholder="500000" oninput="updateAffordability()"/></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Loan Term</label><select id="f_lterm" onchange="updateAffordability()"><option value="12">12 mo</option><option value="24">24 mo</option><option value="36">36 mo</option><option value="60">60 mo</option><option value="84">84 mo</option><option value="120">120 mo</option><option value="180">180 mo</option><option value="240">240 mo</option><option value="360" selected>360 mo</option></select></div>
+          <div class="field"><label>Property Area</label><select id="f_prop"><option value="">Select</option><option>Urban</option><option>Semiurban</option><option>Rural</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Loan Purpose</label><select id="f_purpose"><option value="">Select</option><option>Home</option><option>Vehicle</option><option>Education</option><option>Business</option><option>Personal</option></select></div>
+          <div class="field"><label>CIBIL Score</label><input type="number" id="f_cibil" placeholder="300-900"/></div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Credit History</label><select id="f_ch"><option value="">Select</option><option value="1">Good</option><option value="0">Bad</option></select></div>
+          <div class="field"><label>Email (optional)</label><input type="email" id="f_email" placeholder="for notification"/></div>
+        </div>
+
+        <div class="loading-bar" id="loadingMsg">&#9889; Analyzing with ML model...</div>
+        <button class="predict-btn" id="predictBtn" onclick="predict()">&#9889; Predict Loan Eligibility</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div class="result-banner" id="resultBanner">
+          <div class="result-badge" id="resultIcon"></div>
+          <div>
+            <div id="resultTitle" style="font-size:17px"></div>
+            <div id="resultSub" style="font-size:13px;font-weight:400;margin-top:3px;opacity:.85"></div>
+          </div>
+          <div class="result-pct" id="resultPct"></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">&#127919; Probability</div>
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <canvas id="gaugeCanvas" style="max-height:170px"></canvas>
+              <div style="font-size:34px;font-weight:900;color:#0a4d2e;margin-top:-10px" id="gaugePct">--%</div>
+              <div style="font-size:12px;color:#9ab89f;margin-top:2px">ML Confidence</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">&#128200; Feature Importance</div>
+            <div class="chart-wrap"><canvas id="featCanvas"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card" id="tipsCard" style="display:none">
+          <div class="card-title">&#128161; Eligibility Tips</div>
+          <div id="tipsContent"></div>
+        </div>
+
+        <div class="card" id="progressCard" style="display:none">
+          <div class="card-title">&#128204; Application Progress</div>
+          <div id="progressContent"></div>
+        </div>
+
+        <div id="pdfBtn" style="display:none">
+          <button onclick="downloadPDF()" style="padding:11px 20px;background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer">&#128196; Download PDF Report</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="tab-panel" id="tab-history">
+    <div class="card">
+      <div class="card-title">&#128203; Prediction History</div>
+      <input class="search-bar" type="text" id="searchBar" placeholder="&#128269; Search by name, status, CIBIL..." oninput="filterHistory()"/>
+      <div id="historyWrap"><div class="empty-state">No predictions yet.</div></div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="tab-panel" id="tab-reports">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">&#128200; Approval Overview</div>
+        <div class="chart-wrap"><canvas id="rptBarCanvas"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#127775; CIBIL Distribution</div>
+        <div class="chart-wrap"><canvas id="rptCibilCanvas"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMI CALCULATOR -->
+  <div class="tab-panel" id="tab-emi">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div class="card">
+        <div class="card-title">&#129518; EMI Calculator</div>
+        <div class="slider-group">
+          <label>Loan Amount <span id="laDisplay">&#8377;5,00,000</span></label>
+          <input type="range" id="laSlider" min="50000" max="5000000" step="50000" value="500000" oninput="calcEMI()"/>
+        </div>
+        <div class="slider-group">
+          <label>Interest Rate <span id="irDisplay">8.5%</span></label>
+          <input type="range" id="irSlider" min="5" max="20" step="0.5" value="8.5" oninput="calcEMI()"/>
+        </div>
+        <div class="slider-group">
+          <label>Tenure <span id="ltDisplay">20 years</span></label>
+          <input type="range" id="ltSlider" min="1" max="30" step="1" value="20" oninput="calcEMI()"/>
+        </div>
+        <div style="background:#f0f9f3;border-radius:10px;padding:14px;margin-top:8px">
+          <div style="position:relative;height:200px"><canvas id="emiPieCanvas"></canvas></div>
+        </div>
+      </div>
+      <div>
+        <div class="emi-result">
+          <div style="font-size:13px;opacity:.8;margin-bottom:4px">Monthly EMI</div>
+          <div class="emi-amount" id="emiAmount">&#8377;0</div>
+          <div style="font-size:13px;opacity:.75;margin-top:4px">Per Month Payment</div>
+          <div class="emi-breakdown">
+            <div class="emi-item"><div class="val" id="emiPrincipal">—</div><div class="lbl">Principal</div></div>
+            <div class="emi-item"><div class="val" id="emiInterest">—</div><div class="lbl">Total Interest</div></div>
+            <div class="emi-item"><div class="val" id="emiTotal">—</div><div class="lbl">Total Payment</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">&#128184; Year-wise Breakdown</div>
+          <div style="position:relative;height:240px"><canvas id="emiBarCanvas"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="tab-panel" id="tab-profile">
+    <div style="max-width:560px;margin:0 auto">
+      <div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #bbf7d0;border-radius:12px;padding:20px;margin-bottom:20px;display:flex;align-items:center;gap:18px">
+        <div class="avatar" id="avatarEl">?</div>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#0a4d2e">{{ username }}{% if is_admin %}<span class="badge-admin" style="font-size:12px;padding:3px 10px">ADMIN</span>{% endif %}</div>
+          <div style="font-size:13px;color:#6b9e77;margin-top:3px">CreditIQ Banking Member</div>
+        </div>
+      </div>
+      <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
+        <div class="stat-card"><div class="stat-icon">&#128203;</div><div class="stat-val" id="prof-total">0</div><div class="stat-lbl">Predictions</div></div>
+        <div class="stat-card"><div class="stat-icon">&#9989;</div><div class="stat-val" id="prof-approved" style="color:#15803d">0</div><div class="stat-lbl">Approved</div></div>
+        <div class="stat-card"><div class="stat-icon">&#128200;</div><div class="stat-val" id="prof-rate">0%</div><div class="stat-lbl">Approval Rate</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#9881; Account Actions</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <a href="/logout" style="padding:11px 22px;background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;border-radius:9px;text-decoration:none;font-size:14px;font-weight:700">&#128682; Logout</a>
+          {% if is_admin %}<a href="/admin" style="padding:11px 22px;background:#f0f9f3;color:#0a4d2e;border:1.5px solid #b7dcc3;border-radius:9px;text-decoration:none;font-size:14px;font-weight:700">&#9881; Admin Panel</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="adminFlag" data-admin="{{ 'true' if is_admin else 'false' }}" style="display:none"></div>
+
+<!-- CHATBOT -->
+<div onclick="toggleChat()" style="position:fixed;bottom:28px;right:28px;width:54px;height:54px;background:linear-gradient(135deg,#0a4d2e,#1a7a45);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 4px 18px rgba(10,77,46,.35);z-index:1000">&#129302;</div>
+<div id="chatBox" style="display:none;position:fixed;bottom:94px;right:28px;width:320px;background:#fff;border-radius:16px;box-shadow:0 8px 32px rgba(10,77,46,.18);z-index:1000;overflow:hidden">
+  <div style="background:linear-gradient(135deg,#0a4d2e,#1a7a45);padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+    <div style="color:#fff;font-weight:700;font-size:14px">&#129302; CreditIQ Assistant</div>
+    <span onclick="toggleChat()" style="color:#fff;cursor:pointer;opacity:.7;font-size:18px">&#10005;</span>
+  </div>
+  <div id="chatMsgs" style="height:260px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">
+    <div class="bot-msg">&#128075; Hi! Ask me about CIBIL scores, loan eligibility, or interest rates!</div>
+  </div>
+  <div style="padding:10px;border-top:1px solid #e0ede3;display:flex;gap:8px">
+    <input id="chatInput" type="text" placeholder="Ask something..." style="flex:1;padding:8px 12px;border:1.5px solid #d4e6d9;border-radius:8px;font-size:13px;outline:none" onkeydown="if(event.key==='Enter')sendChat()"/>
+    <button onclick="sendChat()" style="padding:8px 12px;background:#0a4d2e;color:#fff;border:none;border-radius:8px;cursor:pointer">&#9658;</button>
+  </div>
+  <div style="padding:0 10px 10px;display:flex;gap:6px;flex-wrap:wrap">
+    <span onclick="quickChat('What is CIBIL?')" style="background:#f0f9f3;color:#0a4d2e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #d4e6d9">What is CIBIL?</span>
+    <span onclick="quickChat('How to improve score?')" style="background:#f0f9f3;color:#0a4d2e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #d4e6d9">Improve score?</span>
+    <span onclick="quickChat('What documents needed?')" style="background:#f0f9f3;color:#0a4d2e;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid #d4e6d9">Documents?</span>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────
+const isAdmin = document.getElementById('adminFlag').dataset.admin === 'true';
+let allHistory = [];
+let lastPayload = null, lastResult = null;
+let gChart=null, fChart=null, ovChart=null, rbChart=null, rcChart=null, epChart=null, ebChart=null;
+
+// ── TABS ───────────────────────────────────────────────────
+function switchTab(name, el){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  el.classList.add('active');
+  if(name==='history') loadHistory();
+  if(name==='reports') loadReports();
+  if(name==='profile') loadProfile();
+  if(name==='emi') calcEMI();
+  if(name==='overview') loadOverview();
+}
+
+// ── AFFORDABILITY ──────────────────────────────────────────
+function updateAffordability(){
+  const income = +document.getElementById('f_income').value||0;
+  const lamt   = +document.getElementById('f_lamt').value||0;
+  const lterm  = +document.getElementById('f_lterm').value||360;
+  if(!income||!lamt) return;
+  const ratio = (lamt/lterm)/income;
+  const pct   = Math.min(Math.round(ratio*100),100);
+  const bar   = document.getElementById('affordBar');
+  const fill  = document.getElementById('affordFill');
+  const txt   = document.getElementById('affordText');
+  bar.style.display='flex';
+  fill.style.width=pct+'%';
+  if(ratio<=0.3){fill.style.background='#16a34a';txt.textContent='✓ Excellent ('+pct+'%)';txt.style.color='#15803d';}
+  else if(ratio<=0.4){fill.style.background='#c9a84c';txt.textContent='⚠ Good ('+pct+'%)';txt.style.color='#92400e';}
+  else if(ratio<=0.5){fill.style.background='#f97316';txt.textContent='⚠ Moderate ('+pct+'%)';txt.style.color='#9a3412';}
+  else{fill.style.background='#dc2626';txt.textContent='✗ High Risk ('+pct+'%)';txt.style.color='#b91c1c';}
+}
+
+// ── PREDICT ────────────────────────────────────────────────
+function gv(id){return document.getElementById(id).value;}
+
+async function predict(){
+  const income=+gv('f_income'), lamt=+gv('f_lamt'), cibil=+gv('f_cibil');
+  if(!income||!lamt||!cibil){alert('Please fill Income, Loan Amount & CIBIL Score.');return;}
+  const btn=document.getElementById('predictBtn');
+  const ld=document.getElementById('loadingMsg');
+  btn.disabled=true; ld.style.display='block';
+
+  lastPayload={
+    name:gv('f_name')||'Applicant', age:+gv('f_age')||30,
+    gender:gv('f_gender'), married:gv('f_married'), dep:0, edu:gv('f_edu'),
+    emp:gv('f_emp'), income, coincome:+gv('f_coincome')||0,
+    exp:+gv('f_exp')||0, lamt, lterm:+gv('f_lterm')||360,
+    prop:gv('f_prop'), purpose:gv('f_purpose'),
+    cibil, ch:gv('f_ch')!==''?+gv('f_ch'):0.5,
+    emi:0, assets:0, email:gv('f_email')||''
+  };
+
+  try{
+    const res=await fetch('/api/predict',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(lastPayload)
+    });
+    const data=await res.json();
+    if(data.success){
+      lastResult=data.result;
+      showResult(data.result);
+      loadOverview();
+    } else {
+      alert('Prediction failed: '+(data.error||'Unknown error'));
+    }
+  } catch(e){
+    alert('Cannot reach Flask server. Is app.py running?');
+  }
+  btn.disabled=false; ld.style.display='none';
+}
+
+// ── SHOW RESULT ────────────────────────────────────────────
+function showResult(r){
+  const ok=r.approved===1;
+  const banner=document.getElementById('resultBanner');
+  banner.style.display='flex';
+  banner.className='result-banner '+(ok?'approved':'rejected');
+  document.getElementById('resultIcon').textContent=ok?'✓':'✗';
+  document.getElementById('resultTitle').textContent=ok?`Congratulations, ${r.applicant}! Approved`:`Sorry, ${r.applicant}. Not Approved`;
+  document.getElementById('resultSub').textContent=ok?'Your profile meets eligibility criteria.':'Profile does not meet current criteria.';
+  document.getElementById('resultPct').textContent=r.probability+'%';
+  updateGauge(r.probability);
+  if(r.feature_importance) updateFeatChart(r.feature_importance);
+  showTips(ok);
+  showProgress(ok);
+  document.getElementById('pdfBtn').style.display='block';
+  if(ok) confetti();
+}
+
+function updateGauge(pct){
+  document.getElementById('gaugePct').textContent=pct+'%';
+  const col=pct>=70?'#16a34a':pct>=50?'#c9a84c':'#dc2626';
+  if(gChart){gChart.destroy(); gChart=null;}
+  gChart=new Chart(document.getElementById('gaugeCanvas'),{
+    type:'doughnut',
+    data:{datasets:[{data:[pct,100-pct],backgroundColor:[col,'#e8f5eb'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'78%',plugins:{legend:{display:false},tooltip:{enabled:false}}}
+  });
+}
+
+function updateFeatChart(imp){
+  const labs=Object.keys(imp).slice(0,8);
+  const vals=labs.map(k=>imp[k]);
+  if(fChart){fChart.destroy(); fChart=null;}
+  fChart=new Chart(document.getElementById('featCanvas'),{
+    type:'bar',
+    data:{labels:labs,datasets:[{data:vals,backgroundColor:'#1a7a45',borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#e8f5eb'},ticks:{font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+}
+
+// ── TIPS ───────────────────────────────────────────────────
+function showTips(ok){
+  const tips=ok?[
+    {i:'🎉',t:'Congratulations! Your profile meets loan eligibility criteria.'},
+    {i:'📋',t:'Visit your nearest bank branch with valid KYC documents.'},
+    {i:'💳',t:'Keep your CIBIL score above 750 for better interest rates.'},
+    {i:'⏰',t:'Ensure timely EMI payments to maintain good credit history.'},
+  ]:[
+    {i:'📊',t:'Improve your CIBIL score to 750+ by paying all bills on time.'},
+    {i:'💰',t:'Reduce your loan amount or extend tenure to lower EMI ratio.'},
+    {i:'⚠️',t:'Resolve any existing loan defaults or missed payments.'},
+    {i:'🔄',t:'Try applying again in 3-6 months after improving your profile.'},
+  ];
+  document.getElementById('tipsCard').style.display='block';
+  document.getElementById('tipsContent').innerHTML=tips.map(t=>`
+    <div class="tip-item">
+      <span style="font-size:18px;flex-shrink:0">${t.i}</span>
+      <p style="font-size:13px;color:#1a2e1e;line-height:1.5;margin:0">${t.t}</p>
+    </div>`).join('');
+}
+
+// ── PROGRESS ───────────────────────────────────────────────
+function showProgress(ok){
+  const steps=[
+    {l:'Application Submitted',d:'Your loan application has been received.',done:true},
+    {l:'Eligibility Check',d:'ML model analyzed your profile.',done:true},
+    {l:'Document Verification',d:'KYC & income documents review.',done:ok},
+    {l:'Credit Assessment',d:'Final credit risk evaluation.',done:ok},
+    {l:'Loan Decision',d:ok?'🎉 Your loan has been approved!':'❌ Not approved at this time.',done:ok},
+  ];
+  document.getElementById('progressCard').style.display='block';
+  document.getElementById('progressContent').innerHTML=`<div style="padding-left:28px">
+    ${steps.map((s,i)=>`
+      <div style="position:relative;padding-bottom:${i<4?'0':'0'}">
+        <div style="position:absolute;left:-28px;top:0;display:flex;flex-direction:column;align-items:center">
+          <div style="width:24px;height:24px;border-radius:50%;background:${s.done?'#16a34a':'#d4e6d9'};display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:800">${s.done?'✓':(i+1)}</div>
+          ${i<4?`<div style="width:2px;height:36px;background:${s.done?'#16a34a':'#d4e6d9'}"></div>`:''}
+        </div>
+        <div style="padding-bottom:${i<4?'16px':'0'};padding-top:2px">
+          <div style="font-size:13px;font-weight:700;color:${s.done?'#0a4d2e':'#9ab89f'}">${s.l}</div>
+          <div style="font-size:12px;color:${s.done?'#4a8c5c':'#b0c4b8'};margin-top:2px">${s.d}</div>
+        </div>
+      </div>`).join('')}
+  </div>`;
+}
+
+// ── PDF ────────────────────────────────────────────────────
+async function downloadPDF(){
+  if(!lastPayload||!lastResult){alert('Run a prediction first.');return;}
+  try{
+    const res=await fetch('/api/download-pdf',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({input_data:lastPayload,result:lastResult})
+    });
+    if(!res.ok){alert('PDF generation failed.');return;}
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`CreditIQ_${(lastPayload.name||'report').replace(/\s+/g,'_')}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }catch(e){alert('PDF download failed.');}
+}
+
+// ── OVERVIEW ───────────────────────────────────────────────
+async function loadOverview(){
+  try{
+    const [sr,hr]=await Promise.all([fetch('/api/stats'),fetch('/api/history')]);
+    const sd=await sr.json(), hd=await hr.json();
+    if(sd.success){
+      const s=sd.data;
+      animCount('ov-total',s.total);
+      animCount('ov-approved',s.approved);
+      animCount('ov-rejected',s.rejected);
+      document.getElementById('ov-rate').textContent=s.approval_rate+'%';
+      if(ovChart){ovChart.destroy();ovChart=null;}
+      ovChart=new Chart(document.getElementById('ovDonutCanvas'),{
+        type:'doughnut',
+        data:{labels:['Approved','Rejected'],datasets:[{data:[s.approved||0,s.rejected||0],backgroundColor:['#16a34a','#dc2626'],borderWidth:0,hoverOffset:8}]},
+        options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom'}}}
+      });
+    }
+    if(hd.success){
+      allHistory=hd.data;
+      renderRecent(allHistory.slice(0,5));
+    }
+  }catch(e){}
+}
+
+function animCount(id,target){
+  const el=document.getElementById(id);
+  let cur=0; const step=Math.max(1,Math.floor(target/30));
+  const t=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur;if(cur>=target)clearInterval(t);},40);
+}
+
+function renderRecent(items){
+  const w=document.getElementById('recentActivity');
+  if(!items.length){w.innerHTML='<div class="empty-state">No activity yet.</div>';return;}
+  w.innerHTML=items.map(h=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #eef6f0">
+      <div style="width:34px;height:34px;border-radius:50%;background:${h.result==='Approved'?'#dcfce7':'#fee2e2'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${h.result==='Approved'?'✓':'✗'}</div>
+      <div style="flex:1"><div style="font-weight:700;font-size:13px">${h.applicant_name}</div><div style="font-size:11px;color:#9ab89f">CIBIL: ${h.cibil_score} • ₹${Number(h.loan_amount).toLocaleString('en-IN')}</div></div>
+      <span class="pill ${h.result==='Approved'?'approved':'rejected'}">${h.result}</span>
+    </div>`).join('');
+}
+
+// ── HISTORY ────────────────────────────────────────────────
+async function loadHistory(){
+  try{
+    const res=await fetch('/api/history');
+    const data=await res.json();
+    allHistory=data.success?data.data:[];
+    renderHistory(allHistory);
+  }catch(e){}
+}
+
+function renderHistory(rows){
+  const w=document.getElementById('historyWrap');
+  if(!rows.length){w.innerHTML='<div class="empty-state">No predictions found.</div>';return;}
+  const userCol=isAdmin?'<th>User</th>':'';
+  w.innerHTML=`<table class="tbl">
+    <thead><tr><th>#</th>${userCol}<th>Applicant</th><th>Income</th><th>Loan</th><th>CIBIL</th><th>Status</th><th>Score</th><th>Date</th></tr></thead>
+    <tbody>${rows.map((h,i)=>`<tr>
+      <td>${i+1}</td>
+      ${isAdmin?`<td><span style="background:#f0f9f3;color:#0a4d2e;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${h.username||'—'}</span></td>`:''}
+      <td><b>${h.applicant_name}</b></td>
+      <td>₹${Number(h.income).toLocaleString('en-IN')}</td>
+      <td>₹${Number(h.loan_amount).toLocaleString('en-IN')}</td>
+      <td>${h.cibil_score}</td>
+      <td><span class="pill ${h.result==='Approved'?'approved':'rejected'}">${h.result}</span></td>
+      <td><b>${h.probability}%</b></td>
+      <td style="color:#9ab89f;font-size:12px">${h.created_at}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+function filterHistory(){
+  const q=document.getElementById('searchBar').value.toLowerCase();
+  renderHistory(allHistory.filter(h=>
+    h.applicant_name.toLowerCase().includes(q)||
+    h.result.toLowerCase().includes(q)||
+    String(h.cibil_score).includes(q)||
+    (h.username||'').toLowerCase().includes(q)
+  ));
+}
+
+// ── REPORTS ────────────────────────────────────────────────
+async function loadReports(){
+  try{
+    const [sr,hr]=await Promise.all([fetch('/api/stats'),fetch('/api/history')]);
+    const s=(await sr.json()).data, h=(await hr.json()).data||[];
+    if(rbChart){rbChart.destroy();rbChart=null;}
+    rbChart=new Chart(document.getElementById('rptBarCanvas'),{
+      type:'bar',
+      data:{labels:['Total','Approved','Rejected'],datasets:[{data:[s.total,s.approved,s.rejected],backgroundColor:['#1a7a45','#16a34a','#dc2626'],borderRadius:8,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#e8f5eb'}}}}
+    });
+    const bins=[0,0,0,0,0,0];
+    h.forEach(r=>{const c=r.cibil_score;if(c<550)bins[0]++;else if(c<600)bins[1]++;else if(c<650)bins[2]++;else if(c<700)bins[3]++;else if(c<750)bins[4]++;else bins[5]++;});
+    if(rcChart){rcChart.destroy();rcChart=null;}
+    rcChart=new Chart(document.getElementById('rptCibilCanvas'),{
+      type:'bar',
+      data:{labels:['<550','550-600','600-650','650-700','700-750','750+'],datasets:[{data:bins,backgroundColor:['#dc2626','#f97316','#eab308','#84cc16','#22c55e','#16a34a'],borderRadius:6,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#e8f5eb'}}}}
+    });
+  }catch(e){}
+}
+
+// ── EMI CALCULATOR ─────────────────────────────────────────
+function calcEMI(){
+  const P=+document.getElementById('laSlider').value;
+  const r=+document.getElementById('irSlider').value/100/12;
+  const n=+document.getElementById('ltSlider').value*12;
+  const emi=r>0?P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1):P/n;
+  const total=emi*n, interest=total-P;
+  document.getElementById('laDisplay').textContent='₹'+Math.round(P).toLocaleString('en-IN');
+  document.getElementById('irDisplay').textContent=parseFloat(document.getElementById('irSlider').value).toFixed(1)+'%';
+  document.getElementById('ltDisplay').textContent=document.getElementById('ltSlider').value+' years';
+  document.getElementById('emiAmount').textContent='₹'+Math.round(emi).toLocaleString('en-IN');
+  document.getElementById('emiPrincipal').textContent='₹'+Math.round(P/100000).toFixed(1)+'L';
+  document.getElementById('emiInterest').textContent='₹'+Math.round(interest/100000).toFixed(1)+'L';
+  document.getElementById('emiTotal').textContent='₹'+Math.round(total/100000).toFixed(1)+'L';
+
+  if(epChart){epChart.destroy();epChart=null;}
+  epChart=new Chart(document.getElementById('emiPieCanvas'),{
+    type:'doughnut',
+    data:{labels:['Principal','Interest'],datasets:[{data:[Math.round(P),Math.round(interest)],backgroundColor:['#1a7a45','#c9a84c'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{font:{size:12},padding:14}}}}
+  });
+
+  const yrs=Math.min(+document.getElementById('ltSlider').value,10);
+  const yLabs=Array.from({length:yrs},(_,i)=>'Yr '+(i+1));
+  const yEmi=Array(yrs).fill(Math.round(emi*12));
+  if(ebChart){ebChart.destroy();ebChart=null;}
+  ebChart=new Chart(document.getElementById('emiBarCanvas'),{
+    type:'bar',
+    data:{labels:yLabs,datasets:[{label:'Annual EMI',data:yEmi,backgroundColor:'#1a7a45',borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'#e8f5eb'},ticks:{callback:v=>'₹'+Math.round(v/1000)+'K'}}}}
+  });
+}
+
+// ── PROFILE ────────────────────────────────────────────────
+async function loadProfile(){
+  const u='{{ username }}';
+  document.getElementById('avatarEl').textContent=u.slice(0,2).toUpperCase();
+  try{
+    const res=await fetch('/api/stats');
+    const d=await res.json();
+    if(d.success){
+      document.getElementById('prof-total').textContent=d.data.total;
+      document.getElementById('prof-approved').textContent=d.data.approved;
+      document.getElementById('prof-rate').textContent=d.data.approval_rate+'%';
+    }
+  }catch(e){}
+}
+
+// ── CHATBOT (Google Gemini AI) ─────────────────────────────
+const GEMINI_KEY = 'YOUR_GEMINI_API_KEY';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
+const SYSTEM_PROMPT = `You are CreditIQ Assistant, an expert AI chatbot for a banking loan eligibility system. You help users understand loan eligibility, CIBIL scores, EMI calculations, documents needed, interest rates, and tips to improve loan approval chances in India. Keep responses concise (2-4 sentences), friendly, and professional. Focus only on loan and banking related topics.`;
+let chatHistory = [];
+let lastChatTime = 0;
+
+function toggleChat(){
+  const b=document.getElementById('chatBox');
+  b.style.display=b.style.display==='none'?'block':'none';
+}
+function quickChat(q){document.getElementById('chatInput').value=q;sendChat();}
+async function sendChat(){
+  const inp=document.getElementById('chatInput');
+  const msgs=document.getElementById('chatMsgs');
+  const q=inp.value.trim();
+  if(!q) return;
+  const now=Date.now();
+  if(now-lastChatTime<3000){alert('Please wait a moment before sending another message.');return;}
+  lastChatTime=now;
+  inp.value='';
+  const ud=document.createElement('div');
+  ud.className='user-msg';ud.textContent=q;msgs.appendChild(ud);
+  const td=document.createElement('div');
+  td.className='bot-msg';td.innerHTML='<span style="opacity:.6">&#129302; Thinking...</span>';
+  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
+  chatHistory.push({role:'user',parts:[{text:q}]});
+  try{
+    const res=await fetch(GEMINI_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        system_instruction:{parts:[{text:SYSTEM_PROMPT}]},
+        contents:chatHistory,
+        generationConfig:{maxOutputTokens:150,temperature:0.7}
+      })
+    });
+    if(res.status===429){td.textContent='Too many requests. Please wait 30 seconds and try again.';chatHistory.pop();return;}
+    const data=await res.json();
+    if(data.candidates&&data.candidates[0]){
+      const reply=data.candidates[0].content.parts[0].text;
+      td.textContent=reply;
+      chatHistory.push({role:'model',parts:[{text:reply}]});
+      if(chatHistory.length>10)chatHistory=chatHistory.slice(-10);
+    } else {td.textContent='Sorry, could not get a response. Please try again.';chatHistory.pop();}
+  }catch(e){td.textContent='Connection error. Please check your internet.';chatHistory.pop();}
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── CONFETTI ───────────────────────────────────────────────
+function confetti(){
+  const colors=['#0a4d2e','#1a7a45','#c9a84c','#f5d97a','#34c77b','#fff'];
+  for(let i=0;i<100;i++){
+    const d=document.createElement('div');
+    d.style.cssText=`position:fixed;width:${6+Math.random()*8}px;height:${6+Math.random()*8}px;background:${colors[Math.floor(Math.random()*colors.length)]};left:${Math.random()*100}vw;top:-10px;border-radius:${Math.random()>.5?'50%':'2px'};animation:fall ${2+Math.random()*2}s linear forwards;pointer-events:none;z-index:9999`;
+    document.body.appendChild(d);
+    setTimeout(()=>d.remove(),4000);
+  }
+  if(!document.querySelector('#confettiStyle')){
+    const s=document.createElement('style');
+    s.id='confettiStyle';
+    s.textContent='@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}';
+    document.head.appendChild(s);
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────
+loadOverview();
+</script>
+</body>
+</html>

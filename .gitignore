@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.pkl
+*.db
+venv/
+.env
+loan_predictions.db
+model/loan_model.pkl
+dataset/loan_data.csv
