@@ -98,6 +98,40 @@ def train():
     acc = ml.train_model()
     return jsonify({'success': True, 'accuracy': acc})
 
+@app.route('/api/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    try:
+        data = request.get_json()
+        name     = data.get('name','').strip()
+        email    = data.get('email','').strip()
+        password = data.get('password','').strip()
+        if not name or not email:
+            return jsonify({'success':False,'error':'Name and email are required'}), 400
+        db.update_user(session['user_id'], name, email, password if password else None)
+        session['username'] = name
+        return jsonify({'success':True})
+    except Exception as e:
+        return jsonify({'success':False,'error':str(e)}), 500
+
+@app.route('/api/predictions/<int:pred_id>', methods=['DELETE'])
+@login_required
+def delete_prediction(pred_id):
+    try:
+        user_id = None if session.get('is_admin') else session['user_id']
+        db.delete_prediction(pred_id, user_id)
+        return jsonify({'success':True})
+    except Exception as e:
+        return jsonify({'success':False,'error':str(e)}), 500
+
+@app.route('/api/admin/users/<int:uid>/toggle-admin', methods=['POST'])
+@admin_required
+def toggle_admin(uid):
+    if uid == session['user_id']:
+        return jsonify({'success':False,'error':'Cannot change your own role'}), 400
+    db.toggle_admin(uid)
+    return jsonify({'success':True})
+
 # ── PDF DOWNLOAD ─────────────────────────────────────────────
 @app.route('/api/download-pdf', methods=['POST'])
 @login_required

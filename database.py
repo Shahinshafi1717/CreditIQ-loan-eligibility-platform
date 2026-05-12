@@ -162,6 +162,35 @@ def get_history(limit=50, user_id=None):
     conn.close()
     return rows
 
+def update_user(user_id, name, email, password=None):
+    conn = get_db()
+    c = conn.cursor()
+    if password:
+        c.execute('''UPDATE users SET name=?, email=?, password_hash=? WHERE id=?''',
+                  (name, email, hash_password(password), user_id))
+    else:
+        c.execute('''UPDATE users SET name=?, email=? WHERE id=?''',
+                  (name, email, user_id))
+    conn.commit()
+    conn.close()
+
+def toggle_admin(user_id):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("UPDATE users SET is_admin = CASE WHEN is_admin=1 THEN 0 ELSE 1 END WHERE id=?", (user_id,))
+    conn.commit()
+    conn.close()
+
+def delete_prediction(pred_id, user_id=None):
+    conn = get_db()
+    c = conn.cursor()
+    if user_id:
+        c.execute("DELETE FROM predictions WHERE id=? AND user_id=?", (pred_id, user_id))
+    else:
+        c.execute("DELETE FROM predictions WHERE id=?", (pred_id,))
+    conn.commit()
+    conn.close()
+
 def get_stats(user_id=None):
     conn = get_db()
     c = conn.cursor()

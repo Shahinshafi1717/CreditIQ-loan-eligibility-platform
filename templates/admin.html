@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Admin Panel — CreditIQ</title>
+<title>Admin Panel — LoanPro Banking</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f6f1;color:#1a2e1e;min-height:100vh}
@@ -41,7 +41,7 @@ tr:hover td{background:#f7fbf8}
 <header>
   <div class="brand">
     <div class="ico">&#127968;</div>
-    <h1>CreditIQ <span style="opacity:.7;font-weight:400;font-size:14px">Admin Panel</span></h1>
+    <h1>LoanPro <span style="opacity:.7;font-weight:400;font-size:14px">Admin Panel</span></h1>
   </div>
   <div class="nav">
     <span style="color:#f5d97a;font-size:13px">&#128100; {{ username }} <span class="badge">ADMIN</span></span>
@@ -81,7 +81,7 @@ async function loadUsers(){
       <td><span class="pill ${u.is_admin?'admin':'user'}">${u.is_admin?'Admin':'User'}</span></td>
       <td><b>${u.total_predictions}</b></td>
       <td style="color:#9ab89f;font-size:12px">${u.created_at||'—'}</td>
-      <td>${u.is_admin?'<span style="color:#9ab89f;font-size:12px">Protected</span>':`<button class="del-btn" onclick="deleteUser(${u.id},'${u.username}')">&#128465; Delete</button>`}</td>
+              <td>${u.is_admin?'<span style="color:#9ab89f;font-size:12px">Protected</span>':`<div style="display:flex;gap:6px"><button class="del-btn" onclick="deleteUser(${u.id},'${u.username}')">&#128465; Delete</button><button onclick="toggleAdmin(${u.id},'${u.username}')" style="background:#f0f9f3;color:#0a4d2e;border:1px solid #b7dcc3;padding:6px 12px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">${u.is_admin?'Remove Admin':'Make Admin'}</button></div>`}</td>
     </tr>`).join('');
   document.getElementById('usersWrap').innerHTML=`
     <table>

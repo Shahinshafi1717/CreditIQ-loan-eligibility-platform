@@ -333,7 +333,7 @@ input[type=range]{width:100%;accent-color:#0a4d2e;cursor:pointer}
         <div class="avatar" id="avatarEl">?</div>
         <div>
           <div style="font-size:20px;font-weight:800;color:#0a4d2e">{{ username }}{% if is_admin %}<span class="badge-admin" style="font-size:12px;padding:3px 10px">ADMIN</span>{% endif %}</div>
-          <div style="font-size:13px;color:#6b9e77;margin-top:3px">CreditIQ Banking Member</div>
+          <div style="font-size:13px;color:#6b9e77;margin-top:3px">LoanPro Banking Member</div>
         </div>
       </div>
       <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px">
@@ -342,10 +342,13 @@ input[type=range]{width:100%;accent-color:#0a4d2e;cursor:pointer}
         <div class="stat-card"><div class="stat-icon">&#128200;</div><div class="stat-val" id="prof-rate">0%</div><div class="stat-lbl">Approval Rate</div></div>
       </div>
       <div class="card">
-        <div class="card-title">&#9881; Account Actions</div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
-          <a href="/logout" style="padding:11px 22px;background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;border-radius:9px;text-decoration:none;font-size:14px;font-weight:700">&#128682; Logout</a>
-          {% if is_admin %}<a href="/admin" style="padding:11px 22px;background:#f0f9f3;color:#0a4d2e;border:1.5px solid #b7dcc3;border-radius:9px;text-decoration:none;font-size:14px;font-weight:700">&#9881; Admin Panel</a>{% endif %}
+        <div class="card-title">&#9999; Edit Profile</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="field"><label>Full Name</label><input type="text" id="edit_name" placeholder="Your name"/></div>
+          <div class="field"><label>Email</label><input type="email" id="edit_email" placeholder="your@email.com"/></div>
+          <div class="field"><label>New Password <span style="font-weight:400;color:#9ab89f">(leave blank to keep current)</span></label><input type="password" id="edit_pass" placeholder="New password (optional)"/></div>
+          <button onclick="updateProfile()" style="padding:11px;background:linear-gradient(135deg,#0a4d2e,#1a7a45);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer">&#9999; Update Profile</button>
+          <div id="profileMsg" style="font-size:13px;text-align:center;display:none"></div>
         </div>
       </div>
     </div>
@@ -555,7 +558,7 @@ async function downloadPDF(){
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download=`CreditIQ_${(lastPayload.name||'report').replace(/\s+/g,'_')}.pdf`;
+    a.download=`LoanPro_${(lastPayload.name||'report').replace(/\s+/g,'_')}.pdf`;
     a.click();
     URL.revokeObjectURL(url);
   }catch(e){alert('PDF download failed.');}
@@ -618,7 +621,7 @@ function renderHistory(rows){
   if(!rows.length){w.innerHTML='<div class="empty-state">No predictions found.</div>';return;}
   const userCol=isAdmin?'<th>User</th>':'';
   w.innerHTML=`<table class="tbl">
-    <thead><tr><th>#</th>${userCol}<th>Applicant</th><th>Income</th><th>Loan</th><th>CIBIL</th><th>Status</th><th>Score</th><th>Date</th></tr></thead>
+    <thead><tr><th>#</th>${userCol}<th>Applicant</th><th>Income</th><th>Loan</th><th>CIBIL</th><th>Status</th><th>Score</th><th>Date</th><th>Action</th></tr></thead>
     <tbody>${rows.map((h,i)=>`<tr>
       <td>${i+1}</td>
       ${isAdmin?`<td><span style="background:#f0f9f3;color:#0a4d2e;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${h.username||'—'}</span></td>`:''}
@@ -629,6 +632,7 @@ function renderHistory(rows){
       <td><span class="pill ${h.result==='Approved'?'approved':'rejected'}">${h.result}</span></td>
       <td><b>${h.probability}%</b></td>
       <td style="color:#9ab89f;font-size:12px">${h.created_at}</td>
+      <td><button onclick="deletePrediction(${h.id})" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer">🗑 Delete</button></td>
     </tr>`).join('')}</tbody></table>`;
 }
 
@@ -701,6 +705,7 @@ function calcEMI(){
 async function loadProfile(){
   const u='{{ username }}';
   document.getElementById('avatarEl').textContent=u.slice(0,2).toUpperCase();
+  document.getElementById('edit_name').value=u;
   try{
     const res=await fetch('/api/stats');
     const d=await res.json();
@@ -712,13 +717,7 @@ async function loadProfile(){
   }catch(e){}
 }
 
-// ── CHATBOT (Google Gemini AI) ─────────────────────────────
-const GEMINI_KEY = 'YOUR_GEMINI_API_KEY';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
-const SYSTEM_PROMPT = `You are CreditIQ Assistant, an expert AI chatbot for a banking loan eligibility system. You help users understand loan eligibility, CIBIL scores, EMI calculations, documents needed, interest rates, and tips to improve loan approval chances in India. Keep responses concise (2-4 sentences), friendly, and professional. Focus only on loan and banking related topics.`;
-let chatHistory = [];
-let lastChatTime = 0;
-
+// ── CHATBOT ────────────────────────────────────────────────
 function toggleChat(){
   const b=document.getElementById('chatBox');
   b.style.display=b.style.display==='none'?'block':'none';
@@ -728,36 +727,31 @@ async function sendChat(){
   const inp=document.getElementById('chatInput');
   const msgs=document.getElementById('chatMsgs');
   const q=inp.value.trim();
-  if(!q) return;
-  const now=Date.now();
-  if(now-lastChatTime<3000){alert('Please wait a moment before sending another message.');return;}
-  lastChatTime=now;
+  if(!q)return;
   inp.value='';
   const ud=document.createElement('div');
   ud.className='user-msg';ud.textContent=q;msgs.appendChild(ud);
   const td=document.createElement('div');
-  td.className='bot-msg';td.innerHTML='<span style="opacity:.6">&#129302; Thinking...</span>';
-  msgs.appendChild(td);msgs.scrollTop=msgs.scrollHeight;
-  chatHistory.push({role:'user',parts:[{text:q}]});
-  try{
-    const res=await fetch(GEMINI_URL,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        system_instruction:{parts:[{text:SYSTEM_PROMPT}]},
-        contents:chatHistory,
-        generationConfig:{maxOutputTokens:150,temperature:0.7}
-      })
-    });
-    if(res.status===429){td.textContent='Too many requests. Please wait 30 seconds and try again.';chatHistory.pop();return;}
-    const data=await res.json();
-    if(data.candidates&&data.candidates[0]){
-      const reply=data.candidates[0].content.parts[0].text;
-      td.textContent=reply;
-      chatHistory.push({role:'model',parts:[{text:reply}]});
-      if(chatHistory.length>10)chatHistory=chatHistory.slice(-10);
-    } else {td.textContent='Sorry, could not get a response. Please try again.';chatHistory.pop();}
-  }catch(e){td.textContent='Connection error. Please check your internet.';chatHistory.pop();}
+  td.className='bot-msg';td.textContent='Typing...';msgs.appendChild(td);
+  msgs.scrollTop=msgs.scrollHeight;
+  await new Promise(r=>setTimeout(r,700));
+  const kb={
+    'cibil':'CIBIL score ranges 300–900. Score 750+ gives best approval chances and interest rates.',
+    'improve':'Pay bills on time, keep credit utilization below 30%, avoid multiple loan applications.',
+    'document':'You need: Aadhaar, PAN, 3 months salary slips, 6 months bank statements, Form 16.',
+    'income':'Minimum ₹25,000/month for salaried. Higher income = better approval chances.',
+    'emi':'EMI should not exceed 40% of your monthly income for best approval chances.',
+    'interest':'Home loan: 8–10% p.a. Car: 7–12%. Personal: 10–24%. Better CIBIL = lower rate.',
+    'reject':'Common reasons: Low CIBIL, high debt, unstable employment, insufficient income.',
+    'tenure':'Longer tenure = lower EMI but more interest paid. Choose based on affordability.',
+  };
+  const lower=q.toLowerCase();
+  let ans='I\'m not sure. Try asking about CIBIL score, documents, EMI, or interest rates!';
+  if(lower.includes('hi')||lower.includes('hello'))ans='Hello! 👋 Ask me about loans, CIBIL scores, or eligibility!';
+  else if(lower.includes('thank'))ans='You\'re welcome! 😊 Feel free to ask more questions.';
+  else if(lower.includes('approv')||lower.includes('eligib'))ans='Approval depends on CIBIL 750+, stable income, low existing debt, and good credit history. Use the Predict tab for instant results!';
+  else for(const[k,v]of Object.entries(kb)){if(lower.includes(k)){ans=v;break;}}
+  td.textContent=ans;
   msgs.scrollTop=msgs.scrollHeight;
 }
 
@@ -776,6 +770,44 @@ function confetti(){
     s.textContent='@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:0}}';
     document.head.appendChild(s);
   }
+}
+
+// ── UPDATE PROFILE ─────────────────────────────────────────
+async function updateProfile(){
+  const name  = document.getElementById('edit_name').value.trim();
+  const email = document.getElementById('edit_email').value.trim();
+  const pass  = document.getElementById('edit_pass').value.trim();
+  const msg   = document.getElementById('profileMsg');
+  if(!name||!email){alert('Name and email are required.');return;}
+  try{
+    const res=await fetch('/api/profile/update',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,email,password:pass})
+    });
+    const data=await res.json();
+    if(data.success){
+      msg.style.display='block';
+      msg.style.color='#15803d';
+      msg.textContent='✅ Profile updated successfully!';
+      setTimeout(()=>msg.style.display='none',3000);
+    } else {
+      msg.style.display='block';
+      msg.style.color='#b91c1c';
+      msg.textContent='❌ '+data.error;
+    }
+  }catch(e){alert('Could not update profile.');}
+}
+
+// ── DELETE PREDICTION ──────────────────────────────────────
+async function deletePrediction(id){
+  if(!confirm('Delete this prediction?')) return;
+  try{
+    const res=await fetch(`/api/predictions/${id}`,{method:'DELETE'});
+    const data=await res.json();
+    if(data.success){loadHistory();loadOverview();}
+    else alert('Delete failed: '+data.error);
+  }catch(e){alert('Could not delete prediction.');}
 }
 
 // ── INIT ───────────────────────────────────────────────────
